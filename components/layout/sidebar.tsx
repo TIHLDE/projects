@@ -106,11 +106,6 @@ export function Sidebar({ projects, user }: Props) {
               <div className="truncate text-sm font-medium">
                 {user.name || user.email}
               </div>
-              {user.name && (
-                <div className="truncate text-xs text-muted-foreground">
-                  {user.email}
-                </div>
-              )}
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

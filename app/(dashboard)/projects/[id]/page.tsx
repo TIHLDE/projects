@@ -3,6 +3,7 @@ import { ExternalLink, Github } from "lucide-react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
+import { GithubSyncButton } from "@/components/project/github-sync-button"
 import { KanbanBoard } from "@/components/project/kanban-board"
 import { ListView } from "@/components/project/list-view"
 import { SettingsDialog } from "@/components/project/settings-dialog"
@@ -102,17 +103,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle view={view} />
           {hasGithub && (
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={`https://github.com/${project.githubOwner}/${project.githubRepo}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Github className="h-4 w-4" />
-                GitHub
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </Button>
+            <>
+              <GithubSyncButton projectId={project.id} />
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={`https://github.com/${project.githubOwner}/${project.githubRepo}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Github className="h-4 w-4" />
+                  GitHub
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            </>
           )}
           {isOwner && (
             <SettingsDialog
