@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth"
 
 export const authConfig = {
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [],
@@ -12,8 +13,9 @@ export const authConfig = {
       return token
     },
     async session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string
+      const userId = (token.id as string | undefined) ?? token.sub
+      if (session.user && userId) {
+        session.user.id = userId
       }
       return session
     },

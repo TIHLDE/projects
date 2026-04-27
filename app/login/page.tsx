@@ -35,7 +35,11 @@ function LoginForm() {
         redirect: false,
       })
       if (!res || res.error) {
-        toast.error("Feil brukernavn eller passord")
+        if (res?.error === "CredentialsSignin") {
+          toast.error("Feil brukernavn eller passord")
+        } else {
+          toast.error("Innlogging feilet. Sjekk serveroppsett og prøv igjen.")
+        }
         return
       }
       router.push(callbackUrl)
