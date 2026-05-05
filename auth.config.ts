@@ -2,6 +2,8 @@ import type { NextAuthConfig } from "next-auth"
 
 export const authConfig = {
   trustHost: true,
+  // Support both Auth.js v5 and legacy NextAuth env naming.
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [],
