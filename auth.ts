@@ -1,6 +1,5 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { prisma } from "@/lib/prisma"
 import { authConfig } from "@/auth.config"
 
 type TihldeLoginResponse = {
@@ -13,6 +12,11 @@ type TihldeProfile = {
   first_name?: string
   last_name?: string
   image?: string
+}
+
+async function getPrismaClient() {
+  const { prisma } = await import("@/lib/prisma")
+  return prisma
 }
 
 function normalizeApiBaseUrl(url: string): string {
@@ -105,6 +109,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .join(" ")
             .trim()
 
+          const prisma = await getPrismaClient()
           const user = await prisma.user.upsert({
             where: { email: profile.email },
             create: {
