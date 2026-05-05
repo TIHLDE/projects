@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { ExternalLink, Github } from "lucide-react"
 import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { GithubSyncButton } from "@/components/project/github-sync-button"
 import { KanbanBoard } from "@/components/project/kanban-board"
@@ -14,11 +13,15 @@ type PageProps = {
   searchParams: { view?: string }
 }
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 export default async function ProjectPage({ params, searchParams }: PageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect("/login")
   const userId = session.user.id
 
+  const { prisma } = await import("@/lib/prisma")
   const project = await prisma.project.findUnique({
     where: { id: params.id },
     include: {

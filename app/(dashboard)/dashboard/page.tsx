@@ -1,13 +1,16 @@
 import { FolderKanban } from "lucide-react"
 import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
 import { ProjectCard } from "@/components/dashboard/project-card"
 import { CreateProjectDialog } from "@/components/dashboard/create-project-dialog"
+
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
+  const { prisma } = await import("@/lib/prisma")
   const memberships = await prisma.projectMember.findMany({
     where: { userId },
     include: {
