@@ -32,10 +32,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       issuer,
       clientId: process.env.PHOTON_CLIENT_ID,
       clientSecret: process.env.PHOTON_CLIENT_SECRET,
-      // Photon issues short-lived access tokens; ask for a refresh token so a
-      // session outlives the first 15 minutes without bouncing the user.
+      // Bare identitetsscopene. Sesjonen her er Auth.js sin egen JWT, og
+      // Photons access-token brukes aldri etter innlogging — så `offline_access`
+      // ga ingenting, og klienten har det ikke registrert: Photon svarte
+      // `invalid_scope` og avbrøt før innloggingssiden i det hele tatt kom opp.
       authorization: {
-        params: { scope: "openid profile email offline_access" },
+        params: { scope: "openid profile email" },
       },
       profile(profile: PhotonProfile) {
         return {
