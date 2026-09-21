@@ -17,7 +17,7 @@ export type TaskCardTask = {
   assignee: {
     id: string
     name: string | null
-    email: string
+    email: string | null
     image: string | null
   } | null
 }
@@ -36,7 +36,10 @@ export function TaskCard({ task, onClick, draggable, onDragStart }: Props) {
 
   return (
     <div
-      className="group cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/50"
+      className={cn(
+        "group rounded-lg border border-border bg-card p-3 shadow-sm transition-colors",
+        onClick && "cursor-pointer hover:border-primary/50"
+      )}
       onClick={onClick}
       draggable={draggable}
       onDragStart={onDragStart}

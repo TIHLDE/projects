@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button"
 import { GithubSyncButton } from "@/components/project/github-sync-button"
 import { KanbanBoard } from "@/components/project/kanban-board"
 import { ListView } from "@/components/project/list-view"
+import { MembersDialog } from "@/components/project/members-dialog"
 import { SettingsDialog } from "@/components/project/settings-dialog"
+import { fetchGroupMembers } from "@/lib/tihlde"
 import { ViewToggle } from "@/components/project/view-toggle"
 
 type PageProps = {
@@ -28,9 +30,17 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       members: {
         include: {
           user: {
-            select: { id: true, name: true, email: true, image: true },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              username: true,
+              image: true,
+              tihldeUserId: true,
+            },
           },
         },
+        orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
       },
       tasks: {
         include: {
@@ -45,11 +55,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   if (!project) notFound()
 
   const membership = project.members.find((m) => m.userId === userId)
-  if (!membership) redirect("/dashboard")
+  const canEdit = !!membership
 
   const view: "board" | "list" = searchParams.view === "list" ? "list" : "board"
   const hasGithub = !!project.githubOwner && !!project.githubRepo
-  const isOwner = membership.role === "OWNER"
+  const isOwner = membership?.role === "OWNER"
+
+  const candidates = canEdit ? await fetchGroupMembers().catch(() => []) : []
 
   const total = project.tasks.length
   const done = project.tasks.filter((t) => t.status === "DONE").length
@@ -70,6 +82,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
   const members = project.members.map((m) => ({
     userId: m.userId,
+    role: m.role,
     user: m.user,
   }))
 
@@ -105,9 +118,15 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle view={view} />
+          <MembersDialog
+            projectId={project.id}
+            members={members}
+            candidates={candidates}
+            canEdit={canEdit}
+          />
           {hasGithub && (
             <>
-              <GithubSyncButton projectId={project.id} />
+              {canEdit && <GithubSyncButton projectId={project.id} />}
               <Button variant="outline" size="sm" asChild>
                 <a
                   href={`https://github.com/${project.githubOwner}/${project.githubRepo}`}
@@ -143,6 +162,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           tasks={tasks}
           members={members}
           hasGithub={hasGithub}
+          canEdit={canEdit}
         />
       ) : (
         <ListView
@@ -150,6 +170,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           tasks={tasks}
           members={members}
           hasGithub={hasGithub}
+          canEdit={canEdit}
         />
       )}
     </div>

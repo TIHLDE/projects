@@ -26,7 +26,7 @@ type Task = TaskCardTask & {
 
 type Member = {
   userId: string
-  user: { id: string; name: string | null; email: string }
+  user: { id: string; name: string | null; email: string | null }
 }
 
 type Props = {
@@ -34,9 +34,16 @@ type Props = {
   tasks: Task[]
   members: Member[]
   hasGithub: boolean
+  canEdit: boolean
 }
 
-export function ListView({ projectId, tasks, members, hasGithub }: Props) {
+export function ListView({
+  projectId,
+  tasks,
+  members,
+  hasGithub,
+  canEdit,
+}: Props) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskDialogTask | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
@@ -104,8 +111,11 @@ export function ListView({ projectId, tasks, members, hasGithub }: Props) {
                     return (
                       <div
                         key={task.id}
-                        onClick={() => openEdit(task)}
-                        className="flex cursor-pointer items-center gap-3 bg-card px-4 py-2.5 text-sm transition-colors hover:bg-secondary"
+                        onClick={canEdit ? () => openEdit(task) : undefined}
+                        className={cn(
+                          "flex items-center gap-3 bg-card px-4 py-2.5 text-sm transition-colors",
+                          canEdit && "cursor-pointer hover:bg-secondary"
+                        )}
                       >
                         <PriorityIcon priority={task.priority} />
                         <span className="flex-1 truncate font-medium">

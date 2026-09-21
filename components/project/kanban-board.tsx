@@ -24,7 +24,7 @@ type Task = TaskCardTask & {
 
 type Member = {
   userId: string
-  user: { id: string; name: string | null; email: string }
+  user: { id: string; name: string | null; email: string | null }
 }
 
 type Props = {
@@ -32,9 +32,16 @@ type Props = {
   tasks: Task[]
   members: Member[]
   hasGithub: boolean
+  canEdit: boolean
 }
 
-export function KanbanBoard({ projectId, tasks, members, hasGithub }: Props) {
+export function KanbanBoard({
+  projectId,
+  tasks,
+  members,
+  hasGithub,
+  canEdit,
+}: Props) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskDialogTask | null>(null)
@@ -67,6 +74,7 @@ export function KanbanBoard({ projectId, tasks, members, hasGithub }: Props) {
 
   function handleDrop(e: React.DragEvent, status: string) {
     e.preventDefault()
+    if (!canEdit) return
     setDragOver(null)
     const taskId = e.dataTransfer.getData("text/plain")
     if (!taskId) return
@@ -110,25 +118,27 @@ export function KanbanBoard({ projectId, tasks, members, hasGithub }: Props) {
                     {columnTasks.length}
                   </span>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6"
-                  onClick={() => openCreate(status)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {canEdit && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={() => openCreate(status)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <div className="flex flex-col gap-2">
                 {columnTasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     task={task}
-                    draggable
+                    draggable={canEdit}
                     onDragStart={(e) =>
                       e.dataTransfer.setData("text/plain", task.id)
                     }
-                    onClick={() => openEdit(task)}
+                    onClick={canEdit ? () => openEdit(task) : undefined}
                   />
                 ))}
               </div>
