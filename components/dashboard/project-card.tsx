@@ -1,14 +1,20 @@
 import Link from "next/link"
 import { CheckCircle2, Github, Users } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
 
 type CardMember = {
   user: {
     id: string
     name: string | null
-    email: string | null
+    username: string | null
     image: string | null
   }
 }
@@ -85,26 +91,25 @@ export function ProjectCard({
               {members.length}
             </span>
           </div>
-          <div className="flex -space-x-2">
+          <AvatarGroup>
             {members.slice(0, 4).map((m) => (
               <Avatar
                 key={m.user.id}
-                className="h-6 w-6 border-2 border-card"
+                className="h-6 w-6"
+                title={m.user.name ?? undefined}
               >
                 {m.user.image && (
                   <AvatarImage src={m.user.image} alt={m.user.name || ""} />
                 )}
                 <AvatarFallback className="text-[10px]">
-                  {getInitials(m.user.name, m.user.email)}
+                  {getInitials(m.user.name, m.user.username)}
                 </AvatarFallback>
               </Avatar>
             ))}
             {members.length > 4 && (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-secondary text-[10px] font-medium">
-                +{members.length - 4}
-              </div>
+              <AvatarGroupCount>+{members.length - 4}</AvatarGroupCount>
             )}
-          </div>
+          </AvatarGroup>
         </div>
       </Card>
     </Link>

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, Plus, Users, X } from "lucide-react"
+import { Loader2, Users, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,10 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { getInitials } from "@/lib/utils"
 import type { TihldeMember } from "@/lib/tihlde"
+import { MemberCombobox } from "@/components/project/member-combobox"
 import { addProjectMember, removeProjectMember } from "@/actions/members"
 
 export type ProjectMemberView = {
@@ -47,15 +48,17 @@ export function MembersDialog({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
+  const [selected, setSelected] = useState<TihldeMember | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [adding, startAdding] = useTransition()
+  const [, startRemoving] = useTransition()
 
   const assigned = useMemo(
     () => new Set(members.map((m) => m.user.tihldeUserId).filter(Boolean)),
     [members]
   )
 
-  const available = useMemo(() => {
+  const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     return candidates
       .filter((c) => !assigned.has(c.tihldeUserId))
@@ -67,29 +70,32 @@ export function MembersDialog({
       )
   }, [candidates, assigned, query])
 
-  function handleAdd(member: TihldeMember) {
-    setPendingId(member.tihldeUserId)
-    startTransition(async () => {
+  function resetPicker() {
+    setSelected(null)
+    setQuery("")
+  }
+
+  function handleAdd() {
+    if (!selected) return
+    const member = selected
+    startAdding(async () => {
       try {
         await addProjectMember({
           projectId,
           tihldeUserId: member.tihldeUserId,
-          role: "MEMBER",
         })
         toast.success(`${member.name ?? "Medlem"} lagt til`)
-        setQuery("")
+        resetPicker()
         router.refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Noe gikk galt")
-      } finally {
-        setPendingId(null)
       }
     })
   }
 
   function handleRemove(member: ProjectMemberView) {
-    setPendingId(member.userId)
-    startTransition(async () => {
+    setRemovingId(member.userId)
+    startRemoving(async () => {
       try {
         await removeProjectMember(projectId, member.userId)
         toast.success("Medlem fjernet")
@@ -97,19 +103,25 @@ export function MembersDialog({
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Noe gikk galt")
       } finally {
-        setPendingId(null)
+        setRemovingId(null)
       }
     })
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) resetPicker()
+      }}
+    >
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <Users className="h-4 w-4" />
         Medlemmer
         <span className="text-muted-foreground">{members.length}</span>
       </Button>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Medlemmer</DialogTitle>
         </DialogHeader>
@@ -132,8 +144,8 @@ export function MembersDialog({
                     alt={member.user.name ?? ""}
                   />
                 )}
-                <AvatarFallback className="text-xs">
-                  {getInitials(member.user.name, member.user.email)}
+                <AvatarFallback>
+                  {getInitials(member.user.name, member.user.username)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
@@ -151,10 +163,10 @@ export function MembersDialog({
                   size="icon"
                   className="h-7 w-7"
                   aria-label={`Fjern ${member.user.name ?? "medlem"}`}
-                  disabled={pendingId === member.userId}
+                  disabled={removingId === member.userId}
                   onClick={() => handleRemove(member)}
                 >
-                  {pendingId === member.userId ? (
+                  {removingId === member.userId ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <X className="h-4 w-4" />
@@ -169,54 +181,23 @@ export function MembersDialog({
           <>
             <Separator />
             <div className="space-y-2">
-              <Input
-                placeholder="Søk i Index-medlemmer"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+              <Label>Legg til fra Index</Label>
+              <MemberCombobox
+                selected={selected}
+                query={query}
+                onQueryChange={setQuery}
+                results={results}
+                onSelect={setSelected}
               />
-              <div className="max-h-64 overflow-y-auto">
-                {available.length === 0 ? (
-                  <p className="px-2 py-3 text-sm text-muted-foreground">
-                    Ingen treff
-                  </p>
-                ) : (
-                  available.map((candidate) => (
-                    <button
-                      key={candidate.tihldeUserId}
-                      type="button"
-                      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-secondary disabled:opacity-50"
-                      disabled={pendingId === candidate.tihldeUserId}
-                      onClick={() => handleAdd(candidate)}
-                    >
-                      <Avatar className="h-8 w-8">
-                        {candidate.image && (
-                          <AvatarImage
-                            src={candidate.image}
-                            alt={candidate.name ?? ""}
-                          />
-                        )}
-                        <AvatarFallback className="text-xs">
-                          {getInitials(candidate.name, candidate.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">
-                          {candidate.name ?? candidate.username}
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {[candidate.studyProgram, candidate.classYear && `${candidate.classYear}. klasse`]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </div>
-                      </div>
-                      {pendingId === candidate.tihldeUserId ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  ))
-                )}
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={!selected || adding}
+                  onClick={handleAdd}
+                >
+                  {adding && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {adding ? "Legger til …" : "Legg til medlem"}
+                </Button>
               </div>
             </div>
           </>

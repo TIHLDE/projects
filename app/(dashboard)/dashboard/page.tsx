@@ -15,7 +15,7 @@ async function loadProjects() {
       members: {
         include: {
           user: {
-            select: { id: true, name: true, email: true, image: true },
+            select: { id: true, name: true, username: true, image: true },
           },
         },
         orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
