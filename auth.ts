@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import { authConfig } from "@/auth.config"
+import { claimUser } from "@/lib/claim-user"
 
 /**
  * Claims Photon returns from the OIDC userinfo endpoint.
@@ -13,6 +14,7 @@ type PhotonProfile = {
   email?: string
   name?: string
   picture?: string
+  preferred_username?: string
 }
 
 async function getPrismaClient() {
@@ -45,6 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: profile.email,
           name: profile.name,
           image: profile.picture,
+          username: profile.preferred_username,
         }
       },
     },
@@ -54,30 +57,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     /**
      * Mirror the member into the local table so a project can be owned by a
      * row that exists here, not just by a claim in a token.
-     *
-     * Keyed on email rather than `sub`: every account that logged in while
-     * this app still talked to Lepton was written with a Lepton user id, so
-     * matching on email adopts those rows instead of creating a second one
-     * for the same person.
      */
     async signIn({ user, profile }) {
-      const email = user.email ?? profile?.email
-      if (!email) return false
+      const photon = profile as PhotonProfile | undefined
+      const tihldeUserId = photon?.sub ?? null
+      const email = user.email ?? photon?.email ?? null
+      if (!tihldeUserId && !email) return false
 
       const prisma = await getPrismaClient()
-      const row = await prisma.user.upsert({
-        where: { email },
-        create: {
-          email,
-          name: user.name ?? null,
-          image: user.image ?? null,
-          tihldeUserId: profile?.sub ?? null,
-        },
-        update: {
-          name: user.name ?? null,
-          image: user.image ?? null,
-          tihldeUserId: profile?.sub ?? null,
-        },
+      const row = await claimUser(prisma, {
+        tihldeUserId,
+        email,
+        name: user.name ?? null,
+        username: photon?.preferred_username ?? null,
+        image: user.image ?? null,
       })
 
       // The rest of the app joins on this id, so the JWT must carry the local

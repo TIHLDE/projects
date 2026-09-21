@@ -35,7 +35,7 @@ import { createTask, deleteTask, updateTask } from "@/actions/tasks"
 
 type Member = {
   userId: string
-  user: { id: string; name: string | null; email: string }
+  user: { id: string; name: string | null; email: string | null }
 }
 
 export type TaskDialogTask = {
@@ -270,7 +270,7 @@ export function TaskDialog({
                   <SelectItem value="__none__">Ingen</SelectItem>
                   {members.map((m) => (
                     <SelectItem key={m.userId} value={m.userId}>
-                      {m.user.name || m.user.email}
+                      {m.user.name ?? m.user.email ?? "Ukjent"}
                     </SelectItem>
                   ))}
                 </SelectContent>

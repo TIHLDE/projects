@@ -8,7 +8,7 @@ type CardMember = {
   user: {
     id: string
     name: string | null
-    email: string
+    email: string | null
     image: string | null
   }
 }
