@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache"
 import { prisma } from "@/lib/prisma"
-import { getOrgRepoCount, listOrgRepos, type OrgRepo } from "@/lib/github"
+import { listPublicOrgRepos, type OrgRepo } from "@/lib/github"
+import { PRIVATE_REPOS } from "@/lib/private-repos"
 
 export const GITHUB_ORG = process.env.GITHUB_ORG ?? "TIHLDE"
 
@@ -23,6 +24,7 @@ export type TreeMember = {
 export type TreeRepo = {
   key: string
   name: string
+  /** The repo's name on GitHub, or null for a project without one. */
   repoName: string | null
   isPrivate: boolean
   description: string | null
@@ -44,20 +46,41 @@ export type RepoTreeData = {
   warning: string | null
 }
 
-const cachedOrgRepos = unstable_cache(
-  async (org: string) => {
-    const [repos, total] = await Promise.all([
-      listOrgRepos(org),
-      getOrgRepoCount(org).catch(() => null),
-    ])
-    return { repos, total }
-  },
-  ["org-repos"],
+const cachedPublicRepos = unstable_cache(
+  (org: string) => listPublicOrgRepos(org),
+  ["org-public-repos"],
   { revalidate: 600, tags: ["org-repos"] }
 )
 
-export async function getOrgRepos() {
-  return cachedOrgRepos(GITHUB_ORG)
+/** The private repos from the hand-kept list, carrying nothing but a name. */
+function privateRepos(): OrgRepo[] {
+  return PRIVATE_REPOS.map((entry) => {
+    const slug = entry.slug ?? entry.name
+    return {
+      slug,
+      name: entry.name,
+      description: null,
+      isPrivate: true,
+      isArchived: entry.archived ?? false,
+      language: null,
+      stars: 0,
+      pushedAt: null,
+      htmlUrl: `https://github.com/${GITHUB_ORG}/${slug}`,
+    }
+  })
+}
+
+/**
+ * Every repo in the organisation: the public ones from GitHub and the
+ * private ones from `PRIVATE_REPOS`. Throws when GitHub cannot be reached.
+ */
+export async function getOrgRepos(): Promise<OrgRepo[]> {
+  const publicRepos = await cachedPublicRepos(GITHUB_ORG)
+  const known = new Set(publicRepos.map((r) => repoKey(r.slug)))
+  const hidden = privateRepos().filter((r) => !known.has(repoKey(r.slug)))
+  return [...publicRepos, ...hidden].sort((a, b) =>
+    a.name.localeCompare(b.name, "nb")
+  )
 }
 
 function repoKey(name: string) {
@@ -80,17 +103,13 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
   let warning: string | null = null
 
   try {
-    const { repos, total } = await getOrgRepos()
-    orgRepos = repos
-    if (total !== null && repos.length < total) {
-      warning = `GitHub-tokenet ser bare ${repos.length} av ${total} repoer. Gi GITHUB_TOKEN tilgang til alle repoer i ${GITHUB_ORG}.`
-    } else if (!repos.some((r) => r.isPrivate)) {
-      warning = `Fant ingen private repoer. Sjekk at GITHUB_TOKEN har tilgang til de private repoene i ${GITHUB_ORG}.`
-    }
+    orgRepos = await getOrgRepos()
   } catch (err) {
     console.error("Failed to list GitHub repos", err)
+    // The private repos need nothing from GitHub, so they still show.
+    orgRepos = privateRepos()
     warning =
-      "Kunne ikke hente repoer fra GitHub. Viser bare prosjektene som er registrert her."
+      "Kunne ikke hente de offentlige repoene fra GitHub. Viser de private og prosjektene som er registrert her."
   }
 
   const projects = await prisma.project.findMany({
@@ -117,7 +136,7 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
 
   const byRepo = new Map<string, (typeof projects)[number]>()
   const unmatched: typeof projects = []
-  const orgNames = new Set(orgRepos.map((r) => repoKey(r.name)))
+  const orgNames = new Set(orgRepos.map((r) => repoKey(r.slug)))
 
   for (const project of projects) {
     const owner = project.githubOwner?.trim().toLowerCase()
@@ -150,7 +169,7 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
   }
 
   const repos: TreeRepo[] = orgRepos.map((repo) => {
-    const project = byRepo.get(repoKey(repo.name)) ?? null
+    const project = byRepo.get(repoKey(repo.slug)) ?? null
     const state: RepoState =
       project?.status === "ACTIVE"
         ? "front"
@@ -161,9 +180,9 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
             : "unregistered"
 
     const shared = {
-      key: `repo:${repoKey(repo.name)}`,
+      key: `repo:${repoKey(repo.slug)}`,
       name: repo.name,
-      repoName: repo.name,
+      repoName: repo.slug,
       isPrivate: repo.isPrivate,
       htmlUrl: repo.htmlUrl,
       state,

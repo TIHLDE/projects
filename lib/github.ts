@@ -83,6 +83,9 @@ export async function createGithubIssue({
 }
 
 export type OrgRepo = {
+  /** The repository's name on GitHub. */
+  slug: string
+  /** The name shown on the site. */
   name: string
   description: string | null
   isPrivate: boolean
@@ -94,39 +97,27 @@ export type OrgRepo = {
 }
 
 /**
- * Every repository in the organisation that the token can see. A token
- * without access to the organisation's private repositories quietly gets the
- * public ones only, so callers compare against `getOrgRepoCount`.
+ * The organisation's public repositories. Listing them needs no access, so
+ * this works without GITHUB_TOKEN; with one, the rate limit is higher.
  */
-export async function listOrgRepos(org: string): Promise<OrgRepo[]> {
-  const octokit = getOctokit()
+export async function listPublicOrgRepos(org: string): Promise<OrgRepo[]> {
+  const token = process.env.GITHUB_TOKEN
+  const octokit = token ? getOctokit() : new Octokit()
   const rows = await octokit.paginate(octokit.rest.repos.listForOrg, {
     org,
-    type: "all",
+    type: "public",
     per_page: 100,
   })
 
-  return rows
-    .map((row) => ({
-      name: row.name,
-      description: row.description ?? null,
-      isPrivate: row.private,
-      isArchived: row.archived ?? false,
-      language: row.language ?? null,
-      stars: row.stargazers_count ?? 0,
-      pushedAt: row.pushed_at ?? null,
-      htmlUrl: row.html_url,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "nb"))
-}
-
-/**
- * How many repositories the organisation has, or null when the token is not
- * allowed to see the private count.
- */
-export async function getOrgRepoCount(org: string): Promise<number | null> {
-  const octokit = getOctokit()
-  const { data } = await octokit.rest.orgs.get({ org })
-  if (data.total_private_repos == null) return null
-  return data.public_repos + data.total_private_repos
+  return rows.map((row) => ({
+    slug: row.name,
+    name: row.name,
+    description: row.description ?? null,
+    isPrivate: false,
+    isArchived: row.archived ?? false,
+    language: row.language ?? null,
+    stars: row.stargazers_count ?? 0,
+    pushedAt: row.pushed_at ?? null,
+    htmlUrl: row.html_url,
+  }))
 }

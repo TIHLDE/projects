@@ -30,8 +30,6 @@ type Props = {
   members: CardMember[]
   githubOwner: string | null
   githubRepo: string | null
-  /** Whether the viewer may take it off the front page. */
-  canHide: boolean
 }
 
 export function ProjectCard({
@@ -44,7 +42,6 @@ export function ProjectCard({
   members,
   githubOwner,
   githubRepo,
-  canHide,
 }: Props) {
   const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
   const hasGithub = !!githubOwner && !!githubRepo
@@ -55,12 +52,7 @@ export function ProjectCard({
     <div className="relative h-full">
       <Link href={`/projects/${id}`} className="block h-full">
         <Card className="h-full p-5 transition-colors hover:border-primary/50">
-          <div
-            className={cn(
-              "flex items-start justify-between gap-3",
-              canHide && "pr-8"
-            )}
-          >
+          <div className="flex items-start justify-between gap-3 pr-8">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="h-3 w-3 shrink-0 rounded-full"
@@ -125,11 +117,9 @@ export function ProjectCard({
           </div>
         </Card>
       </Link>
-      {canHide && (
-        <div className="absolute right-3 top-3.5">
-          <ProjectCardMenu projectId={id} name={name} />
-        </div>
-      )}
+      <div className="absolute right-3 top-3.5">
+        <ProjectCardMenu projectId={id} name={name} />
+      </div>
     </div>
   )
 }

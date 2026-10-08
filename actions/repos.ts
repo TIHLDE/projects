@@ -58,13 +58,13 @@ export async function assignToRepo(input: z.infer<typeof assignToRepoSchema>) {
   const userId = await requireUserId()
   const { repoName, tihldeUserId } = assignToRepoSchema.parse(input)
 
-  const { repos } = await getOrgRepos()
+  const repos = await getOrgRepos()
   const repo = repos.find(
-    (r) => r.name.toLowerCase() === repoName.toLowerCase()
+    (r) => r.slug.toLowerCase() === repoName.toLowerCase()
   )
   if (!repo) throw new Error(`Fant ikke ${repoName} i ${GITHUB_ORG}`)
 
-  const existing = await findProjectForRepo(repo.name)
+  const existing = await findProjectForRepo(repo.slug)
   if (existing) await requireCanChange(existing.id, userId)
 
   const project =
@@ -75,7 +75,7 @@ export async function assignToRepo(input: z.infer<typeof assignToRepoSchema>) {
         description: repo.isPrivate ? null : repo.description,
         color: colorFor(repo.name),
         githubOwner: GITHUB_ORG,
-        githubRepo: repo.name,
+        githubRepo: repo.slug,
         createdById: userId,
       },
     }))
@@ -117,10 +117,13 @@ export async function assignToProject(
   return { projectId: project.id, name: member.name }
 }
 
-/** Take a project off the front page. Its members and tasks are kept. */
+/**
+ * Take a project off the front page. Its members and tasks are kept. Anyone
+ * in Index may do this, so the front page can be tidied without being on
+ * every project.
+ */
 export async function hideProject(projectId: string) {
-  const userId = await requireUserId()
-  await requireCanChange(projectId, userId)
+  await requireUserId()
 
   await prisma.project.update({
     where: { id: projectId },
@@ -131,8 +134,7 @@ export async function hideProject(projectId: string) {
 
 /** Put a hidden project back on the front page as it was. */
 export async function showProject(projectId: string) {
-  const userId = await requireUserId()
-  await requireCanChange(projectId, userId)
+  await requireUserId()
 
   await prisma.project.update({
     where: { id: projectId },

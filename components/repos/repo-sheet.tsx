@@ -333,7 +333,7 @@ function RepoSheetBody({
         )}
       </div>
 
-      {project && canChange && (
+      {project && (
         <div className="mt-auto border-t border-border p-6">
           {repo.state === "front" ? (
             <Button

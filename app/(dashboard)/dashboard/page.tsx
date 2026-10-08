@@ -61,12 +61,8 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-10">
-          <ProjectSection title="Mine prosjekter" projects={mine} viewerId={userId} />
-          <ProjectSection
-            title="Andre prosjekter"
-            projects={others}
-            viewerId={userId}
-          />
+          <ProjectSection title="Mine prosjekter" projects={mine} />
+          <ProjectSection title="Andre prosjekter" projects={others} />
         </div>
       )}
     </div>
@@ -78,11 +74,9 @@ type SectionProject = Awaited<ReturnType<typeof loadProjects>>[number]
 function ProjectSection({
   title,
   projects,
-  viewerId,
 }: {
   title: string
   projects: SectionProject[]
-  viewerId: string
 }) {
   if (projects.length === 0) return null
 
@@ -104,10 +98,6 @@ function ProjectSection({
             members={p.members}
             githubOwner={p.githubOwner}
             githubRepo={p.githubRepo}
-            canHide={
-              p.members.length === 0 ||
-              p.members.some((m) => m.userId === viewerId)
-            }
           />
         ))}
       </div>
