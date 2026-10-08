@@ -7,20 +7,18 @@ import { PRIVATE_REPOS } from "@/lib/private-repos"
 export const GITHUB_ORG = process.env.GITHUB_ORG ?? "TIHLDE"
 
 /** Where a repo sits in the tree. */
-export type RepoState = "front" | "hidden" | "listed" | "archived"
+export type RepoState = "front" | "listed" | "archived"
 
 export const STATE_BY_STATUS: Record<ProjectStatus, RepoState> = {
   ACTIVE: "front",
-  ARCHIVED: "hidden",
+  ARCHIVED: "archived",
   LISTED: "listed",
-  RETIRED: "archived",
 }
 
 export const STATUS_BY_STATE: Record<RepoState, ProjectStatus> = {
   front: "ACTIVE",
-  hidden: "ARCHIVED",
   listed: "LISTED",
-  archived: "RETIRED",
+  archived: "ARCHIVED",
 }
 
 export type TreeMember = {
@@ -94,8 +92,8 @@ function privateRepos(): OrgRepo[] {
 export async function getOrgRepos(): Promise<OrgRepo[]> {
   const publicRepos = await cachedPublicRepos(GITHUB_ORG)
   const known = new Set(publicRepos.map((r) => repoKey(r.slug)))
-  const hidden = privateRepos().filter((r) => !known.has(repoKey(r.slug)))
-  return [...publicRepos, ...hidden].sort((a, b) =>
+  const unlisted = privateRepos().filter((r) => !known.has(repoKey(r.slug)))
+  return [...publicRepos, ...unlisted].sort((a, b) =>
     a.name.localeCompare(b.name, "nb")
   )
 }

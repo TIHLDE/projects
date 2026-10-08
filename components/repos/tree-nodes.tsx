@@ -11,7 +11,6 @@ import {
   ArrowRight,
   ChevronDown,
   CircleDashed,
-  EyeOff,
   Loader2,
   Lock,
   MoveRight,
@@ -102,11 +101,7 @@ export const SECTION_STYLE: Record<
     className: "bg-primary text-primary-foreground shadow-md shadow-primary/25",
     minimap: "var(--primary)",
   },
-  hidden: {
-    icon: EyeOff,
-    className: "border border-border bg-card text-foreground",
-    minimap: "hsl(215 16% 60%)",
-  },
+
   listed: {
     icon: CircleDashed,
     className:
@@ -302,8 +297,8 @@ const ACTION_CLASS =
 
 /**
  * Moves a repo straight from its card, shown on hover over the star count.
- * Repos on the front page and in the list get Skjul; hidden and archived
- * ones get a menu of where they can go. Clicks stop here so the panel does
+ * Repos on the front page and in the list get Arkiver; archived ones get a
+ * menu of where they can go back to. Clicks stop here so the panel does
  * not open — React bubbles events out of the menu's portal too.
  */
 function CardActions({ repo }: { repo: TreeRepo }) {
@@ -322,7 +317,7 @@ function CardActions({ repo }: { repo: TreeRepo }) {
     })
   }
 
-  const asMenu = repo.state === "hidden" || repo.state === "archived"
+  const asMenu = repo.state === "archived"
 
   return (
     <div
@@ -360,17 +355,17 @@ function CardActions({ repo }: { repo: TreeRepo }) {
       ) : (
         <button
           type="button"
-          aria-label={`Skjul ${repo.name}`}
+          aria-label={`Arkiver ${repo.name}`}
           disabled={pending}
-          onClick={() => move("hidden")}
+          onClick={() => move("archived")}
           className={ACTION_CLASS}
         >
           {pending ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <EyeOff className="h-3 w-3" />
+            <Archive className="h-3 w-3" />
           )}
-          Skjul
+          Arkiver
         </button>
       )}
     </div>

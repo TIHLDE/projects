@@ -4,14 +4,13 @@ import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 /** What moving a repo into each category is called. */
 export const MOVE_LABEL: Record<RepoState, string> = {
   front: "Vis på forsiden",
-  hidden: "Skjul",
   listed: "Flytt til repoliste",
   archived: "Arkiver",
 }
 
 /** The categories a repo can move to from where it is now. */
 export function moveTargets(repo: TreeRepo): RepoState[] {
-  const order: RepoState[] = ["front", "listed", "hidden", "archived"]
+  const order: RepoState[] = ["front", "listed", "archived"]
   return order.filter((state) => state !== repo.state)
 }
 
@@ -27,8 +26,6 @@ export function movedMessage(repo: TreeRepo, to: RepoState) {
   switch (to) {
     case "front":
       return `${repo.name} er på forsiden`
-    case "hidden":
-      return `${repo.name} er skjult`
     case "listed":
       return `${repo.name} er flyttet til repolisten`
     case "archived":

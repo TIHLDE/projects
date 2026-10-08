@@ -20,8 +20,8 @@ async function requireUserId() {
 }
 
 /**
- * Anyone in Index may pick up a repo nobody is on, or bring back a hidden
- * one. A project on the front page that already has people on it is theirs
+ * Anyone in Index may pick up a repo nobody is on, or bring back an
+ * archived one. A project on the front page that already has people on it is theirs
  * to change.
  */
 async function requireCanChange(projectId: string, userId: string) {
@@ -123,11 +123,11 @@ export async function assignToProject(
 }
 
 /**
- * Take a project off the front page. Its members and tasks are kept. Anyone
- * in Index may do this, so the front page can be tidied without being on
- * every project.
+ * Take a project off the front page into the archive. Its members and tasks
+ * are kept. Anyone in Index may do this, so the front page can be tidied
+ * without being on every project.
  */
-export async function hideProject(projectId: string) {
+export async function archiveProject(projectId: string) {
   await requireUserId()
 
   await prisma.project.update({
@@ -137,22 +137,11 @@ export async function hideProject(projectId: string) {
   revalidateAll()
 }
 
-/** Put a hidden project back on the front page as it was. */
-export async function showProject(projectId: string) {
-  await requireUserId()
-
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { status: "ACTIVE" },
-  })
-  revalidateAll()
-}
-
 const moveSchema = z
   .object({
     repoName: z.string().min(1).optional(),
     projectId: z.string().min(1).optional(),
-    to: z.enum(["front", "hidden", "listed", "archived"]),
+    to: z.enum(["front", "listed", "archived"]),
   })
   .refine((v) => v.repoName || v.projectId, "Mangler repo eller prosjekt")
 

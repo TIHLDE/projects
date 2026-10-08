@@ -3,14 +3,14 @@
 import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { EyeOff, MoreHorizontal } from "lucide-react"
+import { Archive, MoreHorizontal } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { hideProject } from "@/actions/repos"
+import { archiveProject } from "@/actions/repos"
 
 export function ProjectCardMenu({
   projectId,
@@ -22,11 +22,11 @@ export function ProjectCardMenu({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  function handleHide() {
+  function handleArchive() {
     startTransition(async () => {
       try {
-        await hideProject(projectId)
-        toast.success(`${name} er skjult`, {
+        await archiveProject(projectId)
+        toast.success(`${name} er arkivert`, {
           description: "Du finner det igjen i repotreet.",
           action: {
             label: "Åpne repotre",
@@ -50,9 +50,9 @@ export function ProjectCardMenu({
         <MoreHorizontal className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleHide}>
-          <EyeOff className="h-4 w-4" />
-          Skjul
+        <DropdownMenuItem onClick={handleArchive}>
+          <Archive className="h-4 w-4" />
+          Arkiver
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

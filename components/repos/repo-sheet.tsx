@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   CircleDashed,
   Eye,
-  EyeOff,
   FolderKanban,
   Github,
   Loader2,
@@ -45,14 +44,12 @@ import { removeProjectMember } from "@/actions/members"
 
 const STATE_LABEL: Record<RepoState, string> = {
   front: "På forsiden",
-  hidden: "Skjult",
   listed: "Repoliste",
   archived: "Arkivert",
 }
 
 const MOVE_ICON: Record<RepoState, typeof Eye> = {
   front: Eye,
-  hidden: EyeOff,
   listed: CircleDashed,
   archived: Archive,
 }
@@ -353,7 +350,7 @@ function RepoSheetBody({
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Flytt til
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {moveTargets(repo).map((to) => {
             const Icon = MOVE_ICON[to]
             return (
