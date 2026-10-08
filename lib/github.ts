@@ -81,3 +81,43 @@ export async function createGithubIssue({
     url: res.data.html_url,
   }
 }
+
+export type OrgRepo = {
+  /** The repository's name on GitHub. */
+  slug: string
+  /** The name shown on the site. */
+  name: string
+  description: string | null
+  isPrivate: boolean
+  isArchived: boolean
+  language: string | null
+  stars: number
+  pushedAt: string | null
+  htmlUrl: string
+}
+
+/**
+ * The organisation's public repositories. Listing them needs no access, so
+ * this works without GITHUB_TOKEN; with one, the rate limit is higher.
+ */
+export async function listPublicOrgRepos(org: string): Promise<OrgRepo[]> {
+  const token = process.env.GITHUB_TOKEN
+  const octokit = token ? getOctokit() : new Octokit()
+  const rows = await octokit.paginate(octokit.rest.repos.listForOrg, {
+    org,
+    type: "public",
+    per_page: 100,
+  })
+
+  return rows.map((row) => ({
+    slug: row.name,
+    name: row.name,
+    description: row.description ?? null,
+    isPrivate: false,
+    isArchived: row.archived ?? false,
+    language: row.language ?? null,
+    stars: row.stargazers_count ?? 0,
+    pushedAt: row.pushed_at ?? null,
+    htmlUrl: row.html_url,
+  }))
+}

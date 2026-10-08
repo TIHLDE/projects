@@ -61,9 +61,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/// Where a project sits in the repo tree: on the front page (ACTIVE), in
+/// the repo list (LISTED) or archived (ARCHIVED).
 enum ProjectStatus {
   ACTIVE
   ARCHIVED
+  LISTED
 }
 
 enum MemberRole {
