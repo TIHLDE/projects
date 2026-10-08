@@ -81,3 +81,52 @@ export async function createGithubIssue({
     url: res.data.html_url,
   }
 }
+
+export type OrgRepo = {
+  name: string
+  description: string | null
+  isPrivate: boolean
+  isArchived: boolean
+  language: string | null
+  stars: number
+  pushedAt: string | null
+  htmlUrl: string
+}
+
+/**
+ * Every repository in the organisation that the token can see. A token
+ * without access to the organisation's private repositories quietly gets the
+ * public ones only, so callers compare against `getOrgRepoCount`.
+ */
+export async function listOrgRepos(org: string): Promise<OrgRepo[]> {
+  const octokit = getOctokit()
+  const rows = await octokit.paginate(octokit.rest.repos.listForOrg, {
+    org,
+    type: "all",
+    per_page: 100,
+  })
+
+  return rows
+    .map((row) => ({
+      name: row.name,
+      description: row.description ?? null,
+      isPrivate: row.private,
+      isArchived: row.archived ?? false,
+      language: row.language ?? null,
+      stars: row.stargazers_count ?? 0,
+      pushedAt: row.pushed_at ?? null,
+      htmlUrl: row.html_url,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "nb"))
+}
+
+/**
+ * How many repositories the organisation has, or null when the token is not
+ * allowed to see the private count.
+ */
+export async function getOrgRepoCount(org: string): Promise<number | null> {
+  const octokit = getOctokit()
+  const { data } = await octokit.rest.orgs.get({ org })
+  if (data.total_private_repos == null) return null
+  return data.public_repos + data.total_private_repos
+}
