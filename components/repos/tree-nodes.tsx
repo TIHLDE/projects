@@ -6,6 +6,7 @@ import { formatDistanceToNowStrict } from "date-fns"
 import { nb } from "date-fns/locale"
 import {
   Archive,
+  ArrowRight,
   ChevronDown,
   CircleDashed,
   EyeOff,
@@ -135,8 +136,12 @@ export const SectionNode = memo(function SectionNode({ data }: NodeProps) {
       <Handles sides={["top", "bottom"]} />
       <button
         type="button"
-        aria-expanded={open}
-        aria-label={`${open ? "Lukk" : "Åpne"} ${label}`}
+        aria-expanded={state === "front" ? undefined : open}
+        aria-label={
+          state === "front"
+            ? "Gå til oversikten"
+            : `${open ? "Lukk" : "Åpne"} ${label}`
+        }
         className={cn(
           "flex h-full w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md",
           style.className,
@@ -148,12 +153,16 @@ export const SectionNode = memo(function SectionNode({ data }: NodeProps) {
         <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs tabular-nums">
           {count}
         </span>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 transition-transform duration-200",
-            !open && "-rotate-90"
-          )}
-        />
+        {state === "front" ? (
+          <ArrowRight className="h-4 w-4" />
+        ) : (
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              !open && "-rotate-90"
+            )}
+          />
+        )}
       </button>
     </>
   )

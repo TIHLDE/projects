@@ -3,6 +3,7 @@
 import "@xyflow/react/dist/style.css"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Background,
   BackgroundVariant,
@@ -64,6 +65,7 @@ function matchesQuery(repo: TreeRepo, q: string) {
 }
 
 function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
+  const router = useRouter()
   const { fitView } = useReactFlow()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -150,7 +152,10 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
         onNodeClick={(_, node: Node) => {
           if (node.type === NODE_TYPE.repo) setSelectedKey(node.id)
           if (node.type === NODE_TYPE.section) {
-            toggleSection((node.data as SectionNodeData).state)
+            const { state } = node.data as SectionNodeData
+            // The front page has its own view; its repos stay open here.
+            if (state === "front") router.push("/dashboard")
+            else toggleSection(state)
           }
         }}
       >
