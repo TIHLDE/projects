@@ -1,6 +1,8 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { formatDistanceToNowStrict } from "date-fns"
 import { nb } from "date-fns/locale"
@@ -10,6 +12,7 @@ import {
   ChevronDown,
   CircleDashed,
   EyeOff,
+  Loader2,
   Lock,
   Sparkles,
   Star,
@@ -22,7 +25,8 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
-import type { RepoState } from "@/lib/repo-tree"
+import { canHide, hideTreeRepo } from "@/components/repos/hide-repo"
+import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 import {
   HANDLE,
   type RepoNodeData,
@@ -202,6 +206,8 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
           style={{ backgroundColor: accent }}
         />
 
+        {canHide(repo) && <HideButton repo={repo} />}
+
         <div className="flex items-center gap-1.5">
           {repo.isPrivate && (
             <Lock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
@@ -278,3 +284,43 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
     </>
   )
 })
+
+/**
+ * Sends a repo to Skjult straight from its card. It sits over the star
+ * count and shows on hover; clicks stop here so the panel does not open.
+ */
+function HideButton({ repo }: { repo: TreeRepo }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <button
+      type="button"
+      aria-label={`Skjul ${repo.name}`}
+      disabled={pending}
+      onClick={(e) => {
+        e.stopPropagation()
+        startTransition(async () => {
+          try {
+            await hideTreeRepo(repo)
+            toast.success(`${repo.name} er skjult`)
+            router.refresh()
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Noe gikk galt")
+          }
+        })
+      }}
+      className={cn(
+        "nodrag nopan absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm transition-opacity hover:bg-secondary hover:text-foreground",
+        pending ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+      )}
+    >
+      {pending ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <EyeOff className="h-3 w-3" />
+      )}
+      Skjul
+    </button>
+  )
+}

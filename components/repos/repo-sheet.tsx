@@ -35,15 +35,15 @@ import { languageColor, SECTION_STYLE } from "@/components/repos/tree-nodes"
 import {
   assignToProject,
   assignToRepo,
-  hideProject,
   showProject,
 } from "@/actions/repos"
+import { canHide, hideTreeRepo } from "@/components/repos/hide-repo"
 import { removeProjectMember } from "@/actions/members"
 
 const STATE_LABEL: Record<RepoState, string> = {
   front: "På forsiden",
   hidden: "Skjult",
-  unregistered: "Ikke i bruk",
+  unregistered: "Repoliste",
   githubArchived: "Arkivert på GitHub",
 }
 
@@ -333,17 +333,17 @@ function RepoSheetBody({
         )}
       </div>
 
-      {project && (
+      {(project || canHide(repo)) && (
         <div className="mt-auto border-t border-border p-6">
-          {repo.state === "front" ? (
+          {canHide(repo) ? (
             <Button
               variant="outline"
               className="w-full"
               disabled={pending}
               onClick={() =>
                 run(
-                  () => hideProject(project.id),
-                  `${repo.name} er skjult fra forsiden`
+                  () => hideTreeRepo(repo),
+                  `${repo.name} er skjult`
                 )
               }
             >
@@ -356,7 +356,7 @@ function RepoSheetBody({
               disabled={pending}
               onClick={() =>
                 run(
-                  () => showProject(project.id),
+                  () => showProject(project!.id),
                   `${repo.name} er tilbake på forsiden`
                 )
               }

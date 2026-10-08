@@ -142,3 +142,38 @@ export async function showProject(projectId: string) {
   })
   revalidateAll()
 }
+
+/**
+ * Hide a repo from the tree's repo list. A repo nobody has picked up yet has
+ * no project to hide, so it is registered as a hidden one.
+ */
+export async function hideRepo(repoName: string) {
+  const userId = await requireUserId()
+
+  const repos = await getOrgRepos()
+  const repo = repos.find(
+    (r) => r.slug.toLowerCase() === repoName.toLowerCase()
+  )
+  if (!repo) throw new Error(`Fant ikke ${repoName} i ${GITHUB_ORG}`)
+
+  const existing = await findProjectForRepo(repo.slug)
+  if (existing) {
+    await prisma.project.update({
+      where: { id: existing.id },
+      data: { status: "ARCHIVED" },
+    })
+  } else {
+    await prisma.project.create({
+      data: {
+        name: repo.name,
+        description: repo.isPrivate ? null : repo.description,
+        color: colorFor(repo.name),
+        githubOwner: GITHUB_ORG,
+        githubRepo: repo.slug,
+        status: "ARCHIVED",
+        createdById: userId,
+      },
+    })
+  }
+  revalidateAll()
+}
