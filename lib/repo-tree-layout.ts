@@ -38,11 +38,29 @@ export const HANDLE = {
 } as const
 
 export type RootNodeData = { total: number; onFront: number }
-export type SectionNodeData = { state: RepoState; label: string; count: number }
+export type SectionNodeData = {
+  state: RepoState
+  label: string
+  count: number
+  open: boolean
+  /** Another category is in focus, so this one steps back. */
+  muted: boolean
+}
 export type RepoNodeData = {
   repo: TreeRepo
   selected: boolean
+  /** Not a search match. */
   dimmed: boolean
+  /** In a category other than the one in focus. */
+  muted: boolean
+}
+
+export type TreeView = {
+  selectedKey: string | null
+  matches: Set<string> | null
+  open: ReadonlySet<RepoState>
+  /** The category opened last, whose repos stay at full strength. */
+  focused: RepoState | null
 }
 
 export type RepoTreeLayout = {
@@ -86,8 +104,7 @@ function edge(
  */
 export function buildRepoTree(
   repos: TreeRepo[],
-  selectedKey: string | null,
-  matches: Set<string> | null
+  { selectedKey, matches, open, focused }: TreeView
 ): RepoTreeLayout {
   const nodes: Node[] = []
   const edges: Edge[] = []
@@ -97,9 +114,10 @@ export function buildRepoTree(
     items: repos
       .filter((r) => r.state === section.state)
       .sort((a, b) => a.name.localeCompare(b.name, "nb")),
-  })).filter((s) => s.items.length > 0)
+  }))
 
   const widths = sections.map((s) => {
+    if (!open.has(s.state)) return SECTION_WIDTH
     const columns = Math.ceil(s.items.length / ROWS_PER_COLUMN)
     return Math.max(columns * COLUMN_STRIDE - COLUMN_GAP, SECTION_WIDTH)
   })
@@ -129,6 +147,8 @@ export function buildRepoTree(
     const width = widths[i]
     const sectionId = `section:${section.state}`
     const front = section.state === "front"
+    const isOpen = open.has(section.state)
+    const muted = focused !== null && focused !== section.state
 
     nodes.push({
       id: sectionId,
@@ -142,11 +162,19 @@ export function buildRepoTree(
         state: section.state,
         label: section.label,
         count: section.items.length,
+        open: isOpen,
+        muted,
       } satisfies SectionNodeData,
     })
     edges.push(
       edge(`e:root:${sectionId}`, "root", HANDLE.bottom, sectionId, HANDLE.top, front)
     )
+
+    // An empty category still shows, so it is clear where repos end up.
+    if (!isOpen || section.items.length === 0) {
+      x += width + SECTION_GAP
+      return
+    }
 
     section.items.forEach((repo, index) => {
       const column = Math.floor(index / ROWS_PER_COLUMN)
@@ -192,6 +220,7 @@ export function buildRepoTree(
           repo,
           selected: repo.key === selectedKey,
           dimmed: matches !== null && !matches.has(repo.key),
+          muted,
         } satisfies RepoNodeData,
       })
       edges.push(

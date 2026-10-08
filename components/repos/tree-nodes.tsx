@@ -6,6 +6,7 @@ import { formatDistanceToNowStrict } from "date-fns"
 import { nb } from "date-fns/locale"
 import {
   Archive,
+  ChevronDown,
   CircleDashed,
   EyeOff,
   Lock,
@@ -126,16 +127,20 @@ export const RootNode = memo(function RootNode({ data }: NodeProps) {
 })
 
 export const SectionNode = memo(function SectionNode({ data }: NodeProps) {
-  const { state, label, count } = data as SectionNodeData
+  const { state, label, count, open, muted } = data as SectionNodeData
   const style = SECTION_STYLE[state]
   const Icon = style.icon
   return (
     <>
       <Handles sides={["top", "bottom"]} />
-      <div
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={`${open ? "Lukk" : "Åpne"} ${label}`}
         className={cn(
-          "flex h-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-semibold",
-          style.className
+          "flex h-full w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md",
+          style.className,
+          muted && "opacity-50 hover:opacity-100"
         )}
       >
         <Icon className="h-4 w-4" />
@@ -143,7 +148,13 @@ export const SectionNode = memo(function SectionNode({ data }: NodeProps) {
         <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs tabular-nums">
           {count}
         </span>
-      </div>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 transition-transform duration-200",
+            !open && "-rotate-90"
+          )}
+        />
+      </button>
     </>
   )
 })
@@ -158,7 +169,7 @@ export const JunctionNode = memo(function JunctionNode() {
 })
 
 export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
-  const { repo, selected, dimmed } = data as RepoNodeData
+  const { repo, selected, dimmed, muted } = data as RepoNodeData
   const members = repo.project?.members ?? []
   const accent = repo.project?.color ?? languageColor(repo.language)
   const front = repo.state === "front"
@@ -174,7 +185,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
           front ? "border-primary/30" : "border-border",
           archived && "opacity-60 grayscale",
           selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-          dimmed && "opacity-20"
+          dimmed ? "opacity-20" : muted && "opacity-40 hover:opacity-100"
         )}
       >
         <span

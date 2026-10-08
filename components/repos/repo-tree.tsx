@@ -2,12 +2,10 @@
 
 import "@xyflow/react/dist/style.css"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Background,
   BackgroundVariant,
-  Controls,
-  MiniMap,
   Panel,
   ReactFlow,
   ReactFlowProvider,
@@ -16,21 +14,22 @@ import {
 } from "@xyflow/react"
 import { AlertTriangle, Network, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import type { TreeRepo } from "@/lib/repo-tree"
+import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 import type { TihldeMember } from "@/lib/tihlde"
 import {
   buildRepoTree,
   NODE_TYPE,
-  type RepoNodeData,
+  type SectionNodeData,
 } from "@/lib/repo-tree-layout"
 import {
   JunctionNode,
   RepoNode,
   RootNode,
-  SECTION_STYLE,
   SectionNode,
 } from "@/components/repos/tree-nodes"
 import { RepoSheet } from "@/components/repos/repo-sheet"
+
+const FIT_VIEW = { padding: 0.12, maxZoom: 1 } as const
 
 const nodeTypes = {
   [NODE_TYPE.root]: RootNode,
@@ -68,6 +67,10 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
   const { fitView } = useReactFlow()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [query, setQuery] = useState("")
+  const [open, setOpen] = useState<ReadonlySet<RepoState>>(
+    () => new Set(["front"])
+  )
+  const [focused, setFocused] = useState<RepoState | null>(null)
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -75,22 +78,54 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
     return new Set(repos.filter((r) => matchesQuery(r, q)).map((r) => r.key))
   }, [repos, query])
 
+  // A search opens every category it finds something in, without closing
+  // the ones already open.
+  function search(next: string) {
+    setQuery(next)
+    const q = next.trim().toLowerCase()
+    if (!q) return
+    const found = repos.filter((r) => matchesQuery(r, q)).map((r) => r.state)
+    if (found.some((state) => !open.has(state))) {
+      setOpen((prev) => new Set([...prev, ...found]))
+    }
+  }
+
   const { nodes, edges } = useMemo(
-    () => buildRepoTree(repos, selectedKey, matches),
-    [repos, selectedKey, matches]
+    () => buildRepoTree(repos, { selectedKey, matches, open, focused }),
+    [repos, selectedKey, matches, open, focused]
   )
 
-  const selected = repos.find((r) => r.key === selectedKey) ?? null
+  // The tree cannot be moved by hand, so it is refitted whenever its shape
+  // changes and whenever the window does.
+  const shape = [...open].sort().join(",") + `:${repos.length}`
+  useEffect(() => {
+    // A timer rather than an animation frame: frames are paused while the
+    // tab is in the background, and the tree would stay unfitted.
+    const timer = setTimeout(() => fitView({ ...FIT_VIEW, duration: 400 }))
+    return () => clearTimeout(timer)
+  }, [shape, fitView])
 
-  function zoomToMatches() {
-    if (!matches || matches.size === 0) return
-    fitView({
-      nodes: [...matches].map((id) => ({ id })),
-      duration: 600,
-      padding: 0.4,
-      maxZoom: 1.2,
-    })
+  useEffect(() => {
+    const onResize = () => fitView(FIT_VIEW)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [fitView])
+
+  function toggleSection(state: RepoState) {
+    if (open.has(state)) {
+      setOpen((prev) => {
+        const next = new Set(prev)
+        next.delete(state)
+        return next
+      })
+      setFocused((prev) => (prev === state ? null : prev))
+    } else {
+      setOpen((prev) => new Set(prev).add(state))
+      setFocused(state)
+    }
   }
+
+  const selected = repos.find((r) => r.key === selectedKey) ?? null
 
   return (
     <div className="repo-tree relative h-full w-full">
@@ -101,13 +136,22 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
+        panOnDrag={false}
+        panOnScroll={false}
+        zoomOnScroll={false}
+        zoomOnPinch={false}
+        zoomOnDoubleClick={false}
+        preventScrolling={false}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
-        minZoom={0.15}
-        maxZoom={1.75}
+        fitViewOptions={FIT_VIEW}
+        minZoom={0.1}
+        maxZoom={1}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node: Node) => {
           if (node.type === NODE_TYPE.repo) setSelectedKey(node.id)
+          if (node.type === NODE_TYPE.section) {
+            toggleSection((node.data as SectionNodeData).state)
+          }
         }}
       >
         <Background
@@ -116,20 +160,6 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
           size={1.4}
           color="var(--tree-edge)"
         />
-        <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap
-          pannable
-          zoomable
-          position="bottom-right"
-          nodeBorderRadius={6}
-          nodeColor={(node) =>
-            node.type === NODE_TYPE.repo
-              ? SECTION_STYLE[(node.data as RepoNodeData).repo.state].minimap
-              : "transparent"
-          }
-          maskColor="rgb(0 0 0 / 0.04)"
-        />
-
         <Panel position="top-left" className="!m-6">
           <div className="flex w-80 flex-col gap-3 rounded-2xl border border-border bg-card/90 p-4 shadow-lg backdrop-blur">
             <div className="flex items-center gap-2">
@@ -139,7 +169,7 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
               <div>
                 <h1 className="text-base font-bold leading-tight">Repotre</h1>
                 <p className="text-xs text-muted-foreground">
-                  Klikk på et repo for å sette folk på det
+                  Åpne en kategori, og klikk på et repo for å sette folk på det
                 </p>
               </div>
             </div>
@@ -147,13 +177,9 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => search(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") zoomToMatches()
-                  if (e.key === "Escape") {
-                    setQuery("")
-                    fitView({ duration: 600, padding: 0.15 })
-                  }
+                  if (e.key === "Escape") search("")
                 }}
                 placeholder="Søk på repo, språk eller person…"
                 className="pl-8"
@@ -163,7 +189,7 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
               <p className="text-xs text-muted-foreground">
                 {matches.size === 0
                   ? "Ingen treff"
-                  : `${matches.size} treff · Enter for å zoome inn`}
+                  : `${matches.size} treff`}
               </p>
             )}
           </div>

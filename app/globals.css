@@ -113,26 +113,17 @@ body {
   animation: fade-in 200ms ease-out;
 }
 
-/* Repo tree: React Flow picks up the app's tokens. */
-.repo-tree .react-flow {
-  --xy-background-color: transparent;
-  --xy-controls-button-background-color: var(--card);
-  --xy-controls-button-background-color-hover: var(--secondary);
-  --xy-controls-button-color: var(--foreground);
-  --xy-controls-button-border-color: var(--border);
-  --xy-minimap-background-color: var(--card);
-  --xy-attribution-background-color: transparent;
+/* Repo tree: a repo fades in as its category opens. */
+@keyframes repo-node-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
-.repo-tree .react-flow__controls {
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-}
-.repo-tree .react-flow__minimap {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
+
 .repo-tree .react-flow__node {
   transition: opacity 200ms ease;
+}
+.repo-tree .react-flow__node-repoTreeRepo > div:not(.react-flow__handle) {
+  animation: repo-node-in 280ms ease-out backwards;
 }
