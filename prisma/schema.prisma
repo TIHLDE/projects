@@ -61,9 +61,13 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/// Where a project sits. ARCHIVED predates the repo tree and means hidden
+/// from the front page (Skjult); RETIRED is archived for good (Arkivert).
 enum ProjectStatus {
   ACTIVE
   ARCHIVED
+  LISTED
+  RETIRED
 }
 
 enum MemberRole {

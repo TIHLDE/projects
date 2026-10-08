@@ -20,8 +20,8 @@ const COLUMN_STRIDE = TRUNK_INDENT + CARD_WIDTH + COLUMN_GAP
 export const SECTIONS: { state: RepoState; label: string }[] = [
   { state: "front", label: "På forsiden" },
   { state: "hidden", label: "Skjult" },
-  { state: "unregistered", label: "Repoliste" },
-  { state: "githubArchived", label: "Arkivert på GitHub" },
+  { state: "listed", label: "Repoliste" },
+  { state: "archived", label: "Arkivert" },
 ]
 
 export const NODE_TYPE = {

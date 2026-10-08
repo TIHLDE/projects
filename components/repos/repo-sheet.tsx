@@ -7,7 +7,9 @@ import { toast } from "sonner"
 import { formatDistanceToNowStrict } from "date-fns"
 import { nb } from "date-fns/locale"
 import {
+  Archive,
   ArrowUpRight,
+  CircleDashed,
   Eye,
   EyeOff,
   FolderKanban,
@@ -32,19 +34,27 @@ import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 import type { TihldeMember } from "@/lib/tihlde"
 import { MemberCombobox } from "@/components/project/member-combobox"
 import { languageColor, SECTION_STYLE } from "@/components/repos/tree-nodes"
+import { assignToProject, assignToRepo } from "@/actions/repos"
 import {
-  assignToProject,
-  assignToRepo,
-  showProject,
-} from "@/actions/repos"
-import { canHide, hideTreeRepo } from "@/components/repos/hide-repo"
+  MOVE_LABEL,
+  movedMessage,
+  moveTargets,
+  moveTreeRepo,
+} from "@/components/repos/move-repo"
 import { removeProjectMember } from "@/actions/members"
 
 const STATE_LABEL: Record<RepoState, string> = {
   front: "På forsiden",
   hidden: "Skjult",
-  unregistered: "Repoliste",
-  githubArchived: "Arkivert på GitHub",
+  listed: "Repoliste",
+  archived: "Arkivert",
+}
+
+const MOVE_ICON: Record<RepoState, typeof Eye> = {
+  front: Eye,
+  hidden: EyeOff,
+  listed: CircleDashed,
+  archived: Archive,
 }
 
 type Props = {
@@ -180,6 +190,12 @@ function RepoSheetBody({
             <StateIcon className="h-3 w-3" />
             {STATE_LABEL[repo.state]}
           </span>
+          {repo.githubArchived && repo.state !== "archived" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              <Archive className="h-3 w-3" />
+              Arkivert på GitHub
+            </span>
+          )}
           {repo.isPrivate && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
               <Lock className="h-3 w-3" />
@@ -333,40 +349,31 @@ function RepoSheetBody({
         )}
       </div>
 
-      {(project || canHide(repo)) && (
-        <div className="mt-auto border-t border-border p-6">
-          {canHide(repo) ? (
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={pending}
-              onClick={() =>
-                run(
-                  () => hideTreeRepo(repo),
-                  `${repo.name} er skjult`
-                )
-              }
-            >
-              <EyeOff className="h-4 w-4" />
-              Skjul
-            </Button>
-          ) : (
-            <Button
-              className="w-full"
-              disabled={pending}
-              onClick={() =>
-                run(
-                  () => showProject(project!.id),
-                  `${repo.name} er tilbake på forsiden`
-                )
-              }
-            >
-              <Eye className="h-4 w-4" />
-              Vis på forsiden
-            </Button>
-          )}
+      <div className="mt-auto space-y-2 border-t border-border p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Flytt til
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {moveTargets(repo).map((to) => {
+            const Icon = MOVE_ICON[to]
+            return (
+              <Button
+                key={to}
+                variant={to === "front" ? "default" : "outline"}
+                size="sm"
+                className="h-auto flex-col gap-1 whitespace-normal py-2 text-xs"
+                disabled={pending}
+                onClick={() =>
+                  run(() => moveTreeRepo(repo, to), movedMessage(repo, to))
+                }
+              >
+                <Icon className="h-4 w-4" />
+                {MOVE_LABEL[to]}
+              </Button>
+            )
+          })}
         </div>
-      )}
+      </div>
     </div>
   )
 }

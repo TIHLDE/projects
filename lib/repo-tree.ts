@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache"
+import type { ProjectStatus } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { listPublicOrgRepos, type OrgRepo } from "@/lib/github"
 import { PRIVATE_REPOS } from "@/lib/private-repos"
@@ -6,7 +7,21 @@ import { PRIVATE_REPOS } from "@/lib/private-repos"
 export const GITHUB_ORG = process.env.GITHUB_ORG ?? "TIHLDE"
 
 /** Where a repo sits in the tree. */
-export type RepoState = "front" | "hidden" | "unregistered" | "githubArchived"
+export type RepoState = "front" | "hidden" | "listed" | "archived"
+
+export const STATE_BY_STATUS: Record<ProjectStatus, RepoState> = {
+  ACTIVE: "front",
+  ARCHIVED: "hidden",
+  LISTED: "listed",
+  RETIRED: "archived",
+}
+
+export const STATUS_BY_STATE: Record<RepoState, ProjectStatus> = {
+  front: "ACTIVE",
+  hidden: "ARCHIVED",
+  listed: "LISTED",
+  archived: "RETIRED",
+}
 
 export type TreeMember = {
   userId: string
@@ -27,6 +42,8 @@ export type TreeRepo = {
   /** The repo's name on GitHub, or null for a project without one. */
   repoName: string | null
   isPrivate: boolean
+  /** Archived on GitHub, whichever category it sits in here. */
+  githubArchived: boolean
   description: string | null
   language: string | null
   stars: number | null
@@ -170,20 +187,20 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
 
   const repos: TreeRepo[] = orgRepos.map((repo) => {
     const project = byRepo.get(repoKey(repo.slug)) ?? null
-    const state: RepoState =
-      project?.status === "ACTIVE"
-        ? "front"
-        : repo.isArchived
-          ? "githubArchived"
-          : project
-            ? "hidden"
-            : "unregistered"
+    // A project's status is a choice someone made, so it wins over GitHub's
+    // archived flag; without one, an archived repo starts out as archived.
+    const state: RepoState = project
+      ? STATE_BY_STATUS[project.status]
+      : repo.isArchived
+        ? "archived"
+        : "listed"
 
     const shared = {
       key: `repo:${repoKey(repo.slug)}`,
       name: repo.name,
       repoName: repo.slug,
       isPrivate: repo.isPrivate,
+      githubArchived: repo.isArchived,
       htmlUrl: repo.htmlUrl,
       state,
       project: project ? projectView(project) : null,
@@ -216,6 +233,7 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
       name: project.name,
       repoName: null,
       isPrivate: false,
+      githubArchived: false,
       description: project.description,
       language: null,
       stars: null,
@@ -224,7 +242,7 @@ export async function loadRepoTree(): Promise<RepoTreeData> {
         project.githubOwner && project.githubRepo
           ? `https://github.com/${project.githubOwner}/${project.githubRepo}`
           : null,
-      state: project.status === "ACTIVE" ? "front" : "hidden",
+      state: STATE_BY_STATUS[project.status],
       project: projectView(project),
     })
   }

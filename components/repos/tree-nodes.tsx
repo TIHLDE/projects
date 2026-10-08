@@ -14,6 +14,7 @@ import {
   EyeOff,
   Loader2,
   Lock,
+  MoveRight,
   Sparkles,
   Star,
 } from "lucide-react"
@@ -25,7 +26,18 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { cn, getInitials } from "@/lib/utils"
-import { canHide, hideTreeRepo } from "@/components/repos/hide-repo"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  MOVE_LABEL,
+  movedMessage,
+  moveTargets,
+  moveTreeRepo,
+} from "@/components/repos/move-repo"
 import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 import {
   HANDLE,
@@ -95,13 +107,13 @@ export const SECTION_STYLE: Record<
     className: "border border-border bg-card text-foreground",
     minimap: "hsl(215 16% 60%)",
   },
-  unregistered: {
+  listed: {
     icon: CircleDashed,
     className:
       "border border-dashed border-muted-foreground/40 bg-card text-muted-foreground",
     minimap: "hsl(215 16% 80%)",
   },
-  githubArchived: {
+  archived: {
     icon: Archive,
     className: "bg-muted text-muted-foreground",
     minimap: "hsl(215 16% 88%)",
@@ -186,7 +198,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
   const members = repo.project?.members ?? []
   const accent = repo.project?.color ?? languageColor(repo.language)
   const front = repo.state === "front"
-  const archived = repo.state === "githubArchived"
+  const archived = repo.state === "archived"
 
   return (
     <>
@@ -206,7 +218,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
           style={{ backgroundColor: accent }}
         />
 
-        {canHide(repo) && <HideButton repo={repo} />}
+        <CardActions repo={repo} />
 
         <div className="flex items-center gap-1.5">
           {repo.isPrivate && (
@@ -285,42 +297,82 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
   )
 })
 
+const ACTION_CLASS =
+  "nodrag nopan flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm transition-colors hover:bg-secondary hover:text-foreground"
+
 /**
- * Sends a repo to Skjult straight from its card. It sits over the star
- * count and shows on hover; clicks stop here so the panel does not open.
+ * Moves a repo straight from its card, shown on hover over the star count.
+ * Repos on the front page and in the list get Skjul; hidden and archived
+ * ones get a menu of where they can go. Clicks stop here so the panel does
+ * not open — React bubbles events out of the menu's portal too.
  */
-function HideButton({ repo }: { repo: TreeRepo }) {
+function CardActions({ repo }: { repo: TreeRepo }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
+  function move(to: RepoState) {
+    startTransition(async () => {
+      try {
+        await moveTreeRepo(repo, to)
+        toast.success(movedMessage(repo, to))
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Noe gikk galt")
+      }
+    })
+  }
+
+  const asMenu = repo.state === "hidden" || repo.state === "archived"
+
   return (
-    <button
-      type="button"
-      aria-label={`Skjul ${repo.name}`}
-      disabled={pending}
-      onClick={(e) => {
-        e.stopPropagation()
-        startTransition(async () => {
-          try {
-            await hideTreeRepo(repo)
-            toast.success(`${repo.name} er skjult`)
-            router.refresh()
-          } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Noe gikk galt")
-          }
-        })
-      }}
+    <div
+      onClick={(e) => e.stopPropagation()}
       className={cn(
-        "nodrag nopan absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm transition-opacity hover:bg-secondary hover:text-foreground",
+        "absolute right-2 top-2 z-10 transition-opacity",
         pending ? "opacity-100" : "opacity-0 group-hover:opacity-100"
       )}
     >
-      {pending ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
+      {asMenu ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={pending}
+            aria-label={`Flytt ${repo.name}`}
+            className={ACTION_CLASS}
+          >
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <MoveRight className="h-3 w-3" />
+            )}
+            Flytt
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {moveTargets(repo).map((to) => (
+              <DropdownMenuItem key={to} onSelect={() => move(to)}>
+                {MOVE_LABEL[to]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
-        <EyeOff className="h-3 w-3" />
+        <button
+          type="button"
+          aria-label={`Skjul ${repo.name}`}
+          disabled={pending}
+          onClick={() => move("hidden")}
+          className={ACTION_CLASS}
+        >
+          {pending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <EyeOff className="h-3 w-3" />
+          )}
+          Skjul
+        </button>
       )}
-      Skjul
-    </button>
+    </div>
   )
 }

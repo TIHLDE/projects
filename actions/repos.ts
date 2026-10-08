@@ -6,7 +6,12 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { PROJECT_COLORS } from "@/lib/utils"
 import { addMemberToProject } from "@/lib/project-members"
-import { findProjectForRepo, getOrgRepos, GITHUB_ORG } from "@/lib/repo-tree"
+import {
+  findProjectForRepo,
+  getOrgRepos,
+  GITHUB_ORG,
+  STATUS_BY_STATE,
+} from "@/lib/repo-tree"
 
 async function requireUserId() {
   const session = await auth()
@@ -143,16 +148,33 @@ export async function showProject(projectId: string) {
   revalidateAll()
 }
 
+const moveSchema = z
+  .object({
+    repoName: z.string().min(1).optional(),
+    projectId: z.string().min(1).optional(),
+    to: z.enum(["front", "hidden", "listed", "archived"]),
+  })
+  .refine((v) => v.repoName || v.projectId, "Mangler repo eller prosjekt")
+
 /**
- * Hide a repo from the tree's repo list. A repo nobody has picked up yet has
- * no project to hide, so it is registered as a hidden one.
+ * Move a repo to another category in the tree. A repo nobody has picked up
+ * yet has no project to carry its category, so it is registered as one with
+ * no members. Members and tasks are kept whichever way it moves.
  */
-export async function hideRepo(repoName: string) {
+export async function moveRepo(input: z.infer<typeof moveSchema>) {
   const userId = await requireUserId()
+  const { repoName, projectId, to } = moveSchema.parse(input)
+  const status = STATUS_BY_STATE[to]
+
+  if (projectId) {
+    await prisma.project.update({ where: { id: projectId }, data: { status } })
+    revalidateAll()
+    return
+  }
 
   const repos = await getOrgRepos()
   const repo = repos.find(
-    (r) => r.slug.toLowerCase() === repoName.toLowerCase()
+    (r) => r.slug.toLowerCase() === repoName!.toLowerCase()
   )
   if (!repo) throw new Error(`Fant ikke ${repoName} i ${GITHUB_ORG}`)
 
@@ -160,7 +182,7 @@ export async function hideRepo(repoName: string) {
   if (existing) {
     await prisma.project.update({
       where: { id: existing.id },
-      data: { status: "ARCHIVED" },
+      data: { status },
     })
   } else {
     await prisma.project.create({
@@ -170,7 +192,7 @@ export async function hideRepo(repoName: string) {
         color: colorFor(repo.name),
         githubOwner: GITHUB_ORG,
         githubRepo: repo.slug,
-        status: "ARCHIVED",
+        status,
         createdById: userId,
       },
     })
