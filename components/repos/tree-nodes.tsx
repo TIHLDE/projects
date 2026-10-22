@@ -128,8 +128,8 @@ export const RootNode = memo(function RootNode({ data }: NodeProps) {
           className="h-12 w-12 rounded-xl ring-1 ring-border"
         />
         <div className="min-w-0">
-          <div className="text-lg font-bold tracking-tight">TIHLDE</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xl font-bold tracking-tight">TIHLDE</div>
+          <div className="text-sm text-muted-foreground">
             {total} repoer · {onFront} på forsiden
           </div>
         </div>
@@ -154,7 +154,7 @@ export const SectionNode = memo(function SectionNode({ data }: NodeProps) {
             : `${open ? "Lukk" : "Åpne"} ${label}`
         }
         className={cn(
-          "flex h-full w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md",
+          "flex h-full w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full px-5 text-base font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md",
           style.className,
           muted && "opacity-50 hover:opacity-100"
         )}
@@ -200,7 +200,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
       <Handles sides={["left"]} />
       <div
         className={cn(
-          "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border bg-card pl-4 pr-3 py-2.5 shadow-sm transition-all duration-200",
+          "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border bg-card pl-5 pr-4 py-3 shadow-sm transition-all duration-200",
           "hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10",
           front ? "border-primary/30" : "border-border",
           archived && "opacity-60 grayscale",
@@ -217,12 +217,12 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
 
         <div className="flex items-center gap-1.5">
           {repo.isPrivate && (
-            <Lock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+            <Lock className="h-4 w-4 shrink-0 text-amber-600" />
           )}
-          <span className="truncate text-sm font-semibold">{repo.name}</span>
+          <span className="truncate text-base font-semibold">{repo.name}</span>
           {repo.stars !== null && repo.stars > 0 && (
-            <span className="ml-auto flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">
-              <Star className="h-3 w-3" />
+            <span className="ml-auto flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground">
+              <Star className="h-3.5 w-3.5" />
               {repo.stars}
             </span>
           )}
@@ -230,7 +230,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
 
         <p
           className={cn(
-            "mt-1 line-clamp-2 text-xs leading-snug",
+            "mt-1 line-clamp-2 text-sm leading-snug",
             repo.isPrivate
               ? "italic text-muted-foreground/70"
               : "text-muted-foreground"
@@ -241,7 +241,7 @@ export const RepoNode = memo(function RepoNode({ data }: NodeProps) {
             : repo.description || "Ingen beskrivelse"}
         </p>
 
-        <div className="mt-auto flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
           {repo.language && (
             <span className="flex items-center gap-1">
               <span
