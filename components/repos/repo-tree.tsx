@@ -31,6 +31,8 @@ import {
 import { RepoSheet } from "@/components/repos/repo-sheet"
 
 const VIEW_PADDING = 32
+const MIN_ZOOM = 0.1
+const LINE_HEIGHT = 40
 
 const nodeTypes = {
   [NODE_TYPE.root]: RootNode,
@@ -120,7 +122,10 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
   // The tree is shown at full size so names stay readable, and only shrinks
   // when the window is too narrow for even one column. What does not fit
   // below is reached with the scroll wheel.
-  const zoom = Math.min(1, (size.width - VIEW_PADDING * 2) / tree.width)
+  const zoom = Math.max(
+    MIN_ZOOM,
+    Math.min(1, (size.width - VIEW_PADDING * 2) / tree.width)
+  )
   const viewX = (size.width - tree.width * zoom) / 2
   const maxScroll = Math.max(
     0,
@@ -143,9 +148,19 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
 
   function onWheel(e: React.WheelEvent) {
     if (maxScroll === 0) return
+    // React bubbles events out of portals, so scrolling the repo sheet would
+    // otherwise scroll the tree behind it.
+    if (!containerRef.current?.contains(e.target as globalThis.Node)) return
+    // Some browsers report the wheel in lines or pages rather than pixels.
+    const delta =
+      e.deltaMode === 1
+        ? e.deltaY * LINE_HEIGHT
+        : e.deltaMode === 2
+          ? e.deltaY * size.height
+          : e.deltaY
     animate.current = false
     setScroll((prev) =>
-      Math.max(0, Math.min(maxScroll, Math.min(prev, maxScroll) + e.deltaY))
+      Math.max(0, Math.min(maxScroll, Math.min(prev, maxScroll) + delta))
     )
   }
   const { nodes, edges } = tree
@@ -183,7 +198,7 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
         zoomOnPinch={false}
         zoomOnDoubleClick={false}
         preventScrolling={false}
-        minZoom={0.1}
+        minZoom={MIN_ZOOM}
         maxZoom={1}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node: Node) => {
