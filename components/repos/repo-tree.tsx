@@ -2,7 +2,7 @@
 
 import "@xyflow/react/dist/style.css"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Background,
@@ -30,7 +30,7 @@ import {
 } from "@/components/repos/tree-nodes"
 import { RepoSheet } from "@/components/repos/repo-sheet"
 
-const FIT_VIEW = { padding: 0.12, maxZoom: 1 } as const
+const VIEW_PADDING = 32
 
 const nodeTypes = {
   [NODE_TYPE.root]: RootNode,
@@ -66,7 +66,7 @@ function matchesQuery(repo: TreeRepo, q: string) {
 
 function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
   const router = useRouter()
-  const { fitView } = useReactFlow()
+  const { setViewport } = useReactFlow()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState<ReadonlySet<RepoState>>(
@@ -92,37 +92,72 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
     }
   }
 
-  const { nodes, edges } = useMemo(
-    () => buildRepoTree(repos, { selectedKey, matches, open, focused }),
-    [repos, selectedKey, matches, open, focused]
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ width: 1600, height: 900 })
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setSize({ width, height })
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const tree = useMemo(
+    () =>
+      buildRepoTree(repos, {
+        selectedKey,
+        matches,
+        open,
+        focused,
+        width: size.width - VIEW_PADDING * 2,
+      }),
+    [repos, selectedKey, matches, open, focused, size.width]
   )
 
-  // The tree cannot be moved by hand, so it is refitted whenever its shape
-  // changes and whenever the window does.
+  // The tree is shown at full size so names stay readable, and only shrinks
+  // when the window is too narrow for even one column. What does not fit
+  // below is reached with the scroll wheel.
+  const zoom = Math.min(1, (size.width - VIEW_PADDING * 2) / tree.width)
+  const viewX = (size.width - tree.width * zoom) / 2
+  const maxScroll = Math.max(
+    0,
+    tree.height * zoom + VIEW_PADDING * 2 - size.height
+  )
+  const [scroll, setScroll] = useState(0)
+
   const shape = [...open].sort().join(",") + `:${repos.length}`
-  useEffect(() => {
-    // A timer rather than an animation frame: frames are paused while the
-    // tab is in the background, and the tree would stay unfitted.
-    const timer = setTimeout(() => fitView({ ...FIT_VIEW, duration: 400 }))
-    return () => clearTimeout(timer)
-  }, [shape, fitView])
+  useEffect(() => setScroll(0), [shape])
 
+  const clampedScroll = Math.min(scroll, maxScroll)
+  const animate = useRef(true)
   useEffect(() => {
-    const onResize = () => fitView(FIT_VIEW)
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [fitView])
+    setViewport(
+      { x: viewX, y: VIEW_PADDING - clampedScroll, zoom },
+      { duration: animate.current ? 400 : 0 }
+    )
+    animate.current = true
+  }, [viewX, clampedScroll, zoom, setViewport])
 
+  function onWheel(e: React.WheelEvent) {
+    if (maxScroll === 0) return
+    animate.current = false
+    setScroll((prev) =>
+      Math.max(0, Math.min(maxScroll, Math.min(prev, maxScroll) + e.deltaY))
+    )
+  }
+  const { nodes, edges } = tree
+
+  // One category at a time, so its names stay readable. Closing it brings
+  // the front page back rather than leaving the tree empty.
   function toggleSection(state: RepoState) {
     if (open.has(state)) {
-      setOpen((prev) => {
-        const next = new Set(prev)
-        next.delete(state)
-        return next
-      })
-      setFocused((prev) => (prev === state ? null : prev))
+      setOpen(new Set(["front"]))
+      setFocused(null)
     } else {
-      setOpen((prev) => new Set(prev).add(state))
+      setOpen(new Set([state]))
       setFocused(state)
     }
   }
@@ -130,7 +165,11 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
   const selected = repos.find((r) => r.key === selectedKey) ?? null
 
   return (
-    <div className="repo-tree relative h-full w-full">
+    <div
+      ref={containerRef}
+      onWheel={onWheel}
+      className="repo-tree relative h-full w-full"
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -144,8 +183,6 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
         zoomOnPinch={false}
         zoomOnDoubleClick={false}
         preventScrolling={false}
-        fitView
-        fitViewOptions={FIT_VIEW}
         minZoom={0.1}
         maxZoom={1}
         proOptions={{ hideAttribution: true }}

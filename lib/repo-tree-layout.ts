@@ -1,14 +1,13 @@
 import type { Edge, Node } from "@xyflow/react"
 import type { RepoState, TreeRepo } from "@/lib/repo-tree"
 
-export const CARD_WIDTH = 272
-export const CARD_HEIGHT = 108
-export const ROOT_WIDTH = 320
-export const ROOT_HEIGHT = 84
-export const SECTION_WIDTH = 248
-export const SECTION_HEIGHT = 40
+export const CARD_WIDTH = 340
+export const CARD_HEIGHT = 136
+export const ROOT_WIDTH = 360
+export const ROOT_HEIGHT = 96
+export const SECTION_WIDTH = 288
+export const SECTION_HEIGHT = 48
 
-const ROWS_PER_COLUMN = 7
 const ROW_GAP = 16
 const TRUNK_INDENT = 28
 const COLUMN_GAP = 40
@@ -60,11 +59,16 @@ export type TreeView = {
   open: ReadonlySet<RepoState>
   /** The category opened last, whose repos stay at full strength. */
   focused: RepoState | null
+  /** Width the tree has to fill at full size; open categories get as many
+   * columns as fit in it. */
+  width: number
 }
 
 export type RepoTreeLayout = {
   nodes: Node[]
   edges: Edge[]
+  width: number
+  height: number
 }
 
 const EDGE_COLOR = "var(--tree-edge)"
@@ -98,12 +102,13 @@ function edge(
 
 /**
  * Root at the top, one branch per state, and each branch's repos in columns
- * of at most `ROWS_PER_COLUMN` hanging off a trunk on their left — a file
- * tree turned sideways, so no edge ever crosses a card.
+ * hanging off a trunk on their left — a file tree turned sideways, so no
+ * edge ever crosses a card. Open branches share the given width and grow
+ * downwards from there, so cards keep their full size.
  */
 export function buildRepoTree(
   repos: TreeRepo[],
-  { selectedKey, matches, open, focused }: TreeView
+  { selectedKey, matches, open, focused, width: available }: TreeView
 ): RepoTreeLayout {
   const nodes: Node[] = []
   const edges: Edge[] = []
@@ -115,14 +120,37 @@ export function buildRepoTree(
       .sort((a, b) => a.name.localeCompare(b.name, "nb")),
   }))
 
-  const widths = sections.map((s) => {
-    if (!open.has(s.state)) return SECTION_WIDTH
-    const columns = Math.ceil(s.items.length / ROWS_PER_COLUMN)
-    return Math.max(columns * COLUMN_STRIDE - COLUMN_GAP, SECTION_WIDTH)
+  // The category pills sit in a row of their own, and the cards of the open
+  // ones share the whole width below it, in the same order as the pills.
+  const filled = sections.filter(
+    (s) => open.has(s.state) && s.items.length > 0
+  ).length
+  const share =
+    (available - SECTION_GAP * Math.max(filled - 1, 0)) / Math.max(filled, 1)
+  const fitColumns = Math.max(
+    1,
+    Math.floor((share + COLUMN_GAP) / COLUMN_STRIDE)
+  )
+
+  const columnCounts = sections.map((s) => {
+    if (!open.has(s.state) || s.items.length === 0) return 0
+    // Balance the columns, so the last one is not left with a single card.
+    const rows = Math.ceil(s.items.length / fitColumns)
+    return Math.ceil(s.items.length / rows)
   })
-  const totalWidth =
-    widths.reduce((sum, w) => sum + w, 0) +
+  const rowsPerColumn = sections.map((s, i) =>
+    columnCounts[i] ? Math.ceil(s.items.length / columnCounts[i]) : 0
+  )
+  const blockWidths = columnCounts.map((columns) =>
+    columns ? columns * COLUMN_STRIDE - COLUMN_GAP : 0
+  )
+  const blocksWidth =
+    blockWidths.reduce((sum, w) => sum + w, 0) +
+    SECTION_GAP * Math.max(filled - 1, 0)
+  const pillsWidth =
+    sections.length * SECTION_WIDTH +
     SECTION_GAP * Math.max(sections.length - 1, 0)
+  const totalWidth = Math.max(pillsWidth, blocksWidth)
 
   nodes.push({
     id: "root",
@@ -141,9 +169,10 @@ export function buildRepoTree(
   const sectionY = ROOT_HEIGHT + ROOT_TO_SECTION
   const cardsY = sectionY + SECTION_HEIGHT + SECTION_TO_CARDS
 
-  let x = 0
+  const pillsX = (totalWidth - pillsWidth) / 2
+  let x = (totalWidth - blocksWidth) / 2
   sections.forEach((section, i) => {
-    const width = widths[i]
+    const width = blockWidths[i]
     const sectionId = `section:${section.state}`
     const front = section.state === "front"
     const isOpen = open.has(section.state)
@@ -152,7 +181,10 @@ export function buildRepoTree(
     nodes.push({
       id: sectionId,
       type: NODE_TYPE.section,
-      position: { x: x + width / 2 - SECTION_WIDTH / 2, y: sectionY },
+      position: {
+        x: pillsX + i * (SECTION_WIDTH + SECTION_GAP),
+        y: sectionY,
+      },
       width: SECTION_WIDTH,
       height: SECTION_HEIGHT,
       draggable: false,
@@ -170,14 +202,12 @@ export function buildRepoTree(
     )
 
     // An empty category still shows, so it is clear where repos end up.
-    if (!isOpen || section.items.length === 0) {
-      x += width + SECTION_GAP
-      return
-    }
+    if (!isOpen || section.items.length === 0) return
 
+    const rows = rowsPerColumn[i]
     section.items.forEach((repo, index) => {
-      const column = Math.floor(index / ROWS_PER_COLUMN)
-      const row = index % ROWS_PER_COLUMN
+      const column = Math.floor(index / rows)
+      const row = index % rows
       const columnX = x + column * COLUMN_STRIDE
       const junctionId = `junction:${section.state}:${column}`
 
@@ -237,5 +267,10 @@ export function buildRepoTree(
     x += width + SECTION_GAP
   })
 
-  return { nodes, edges }
+  const maxRows = Math.max(0, ...rowsPerColumn)
+  const height = maxRows
+    ? cardsY + maxRows * (CARD_HEIGHT + ROW_GAP) - ROW_GAP
+    : sectionY + SECTION_HEIGHT
+
+  return { nodes, edges, width: totalWidth, height }
 }
