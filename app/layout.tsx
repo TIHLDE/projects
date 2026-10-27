@@ -20,7 +20,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="no" className={inter.variable}>
+    <html lang="no" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Apply the saved theme before first paint to avoid a light flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
         <Providers>{children}</Providers>
         <Toaster richColors position="top-right" />

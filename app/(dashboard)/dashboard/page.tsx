@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between pr-14">
         <div>
           <h1 className="text-3xl font-bold">Prosjekter</h1>
           <p className="mt-1 text-sm text-muted-foreground">

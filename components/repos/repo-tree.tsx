@@ -253,7 +253,7 @@ function RepoTreeCanvas({ repos, candidates, viewerId, warning }: Props) {
         </Panel>
 
         {warning && (
-          <Panel position="top-right" className="!m-6">
+          <Panel position="top-right" className="!m-6 !mt-16">
             <div className="flex max-w-sm items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{warning}</span>
