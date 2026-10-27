@@ -42,3 +42,10 @@ export async function fetchGroupMembers(): Promise<TihldeMember[]> {
     }))
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "nb"))
 }
+
+/** Whether a TIHLDE user is in the Index group. False if the lookup fails. */
+export async function isIndexMember(tihldeUserId: string | null | undefined) {
+  if (!tihldeUserId) return false
+  const members = await fetchGroupMembers().catch(() => [])
+  return members.some((m) => m.tihldeUserId === tihldeUserId)
+}
