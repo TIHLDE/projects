@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { Sidebar } from "@/components/layout/sidebar"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
           image: session.user.image,
         }}
       />
+      <ThemeToggle />
       <main className="ml-60 min-h-screen">{children}</main>
     </div>
   )

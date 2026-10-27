@@ -88,7 +88,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4 pr-14">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <span
