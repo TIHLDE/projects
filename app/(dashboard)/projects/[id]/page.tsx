@@ -9,6 +9,8 @@ import { MembersDialog } from "@/components/project/members-dialog"
 import { SettingsDialog } from "@/components/project/settings-dialog"
 import { fetchGroupMembers } from "@/lib/tihlde"
 import { ViewToggle } from "@/components/project/view-toggle"
+import { LiveRefresh } from "@/components/project/live-refresh"
+import { taskVersion } from "@/lib/utils"
 
 type PageProps = {
   params: { id: string }
@@ -66,6 +68,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const total = project.tasks.length
   const done = project.tasks.filter((t) => t.status === "DONE").length
   const inProgress = project.tasks.filter((t) => t.status === "IN_PROGRESS").length
+  const version = taskVersion(
+    total,
+    project.tasks.reduce<Date | null>(
+      (latest, t) => (!latest || t.updatedAt > latest ? t.updatedAt : latest),
+      null
+    )
+  )
 
   const tasks = project.tasks.map((t) => ({
     id: t.id,
@@ -88,6 +97,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
+      <LiveRefresh projectId={project.id} version={version} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4 pr-14">
         <div className="min-w-0">
           <div className="flex items-center gap-3">

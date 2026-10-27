@@ -71,3 +71,12 @@ export function getInitials(name: string | null | undefined, email?: string | nu
   if (email) return email.slice(0, 2).toUpperCase()
   return "??"
 }
+
+/**
+ * A cheap fingerprint of a project's tasks, so open boards can tell when
+ * someone else changed something. Edits and new tasks move the latest
+ * `updatedAt`; deletions change the count.
+ */
+export function taskVersion(count: number, lastUpdated: Date | null) {
+  return `${count}:${lastUpdated?.getTime() ?? 0}`
+}

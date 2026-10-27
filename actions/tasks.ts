@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { createGithubIssue } from "@/lib/github"
+import { taskVersion } from "@/lib/utils"
 
 const taskSchema = z.object({
   title: z.string().min(1, "Tittel er påkrevd"),
@@ -137,4 +138,14 @@ export async function deleteTask(taskId: string) {
 
   await prisma.task.delete({ where: { id: taskId } })
   revalidatePath(`/projects/${task.projectId}`)
+}
+
+export async function getTaskVersion(projectId: string) {
+  await requireUserId()
+  const { _count, _max } = await prisma.task.aggregate({
+    where: { projectId },
+    _count: true,
+    _max: { updatedAt: true },
+  })
+  return taskVersion(_count, _max.updatedAt)
 }
