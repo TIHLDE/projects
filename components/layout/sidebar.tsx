@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { LayoutGrid, LogOut, FolderKanban, Network } from "lucide-react"
+import { LayoutGrid, LogOut, FolderKanban, Network, Inbox } from "lucide-react"
 import { cn, getInitials } from "@/lib/utils"
 import {
   Avatar,
@@ -71,6 +71,18 @@ export function Sidebar({ projects, user }: Props) {
         >
           <Network className="h-4 w-4" />
           Repotre
+        </Link>
+        <Link
+          href="/foresporsler"
+          className={cn(
+            "mt-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            pathname === "/foresporsler"
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          )}
+        >
+          <Inbox className="h-4 w-4" />
+          Forespørsler
         </Link>
 
         <div className="mt-6 px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

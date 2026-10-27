@@ -24,6 +24,7 @@ model User {
   memberships    ProjectMember[]
   assignedTasks  Task[]           @relation("TaskAssignee")
   createdTasks   Task[]           @relation("TaskCreator")
+  requests       Request[]
 }
 
 model Account {
@@ -140,4 +141,16 @@ model Task {
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   creator  User    @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+/// A suggestion to Index from anyone in TIHLDE. It stays here until Index
+/// either deletes it or turns it into a task in one of the projects.
+model Request {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
 }
