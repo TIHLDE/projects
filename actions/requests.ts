@@ -65,7 +65,7 @@ export async function addRequestToProject(
   const request = await prisma.request.findUnique({ where: { id: requestId } })
   if (!request) return "Forespørselen finnes ikke"
   const project = await prisma.project.findUnique({ where: { id: projectId } })
-  if (!project) return "Prosjektet finnes ikke"
+  if (project?.status !== "ACTIVE") return "Prosjektet er ikke aktivt"
 
   await prisma.$transaction([
     prisma.task.create({
