@@ -74,6 +74,16 @@ export async function syncGithubIssues(
         ...new Set([...existing.tags, ...labelTags]),
       ]
 
+      // Leave unchanged tasks alone, so a sync with nothing new does not
+      // bump `updatedAt` and refresh every open board.
+      const changed =
+        existing.title !== issue.title ||
+        existing.description !== issue.body ||
+        existing.githubIssueUrl !== issue.htmlUrl ||
+        existing.status !== nextStatus ||
+        existing.tags.length !== mergedTags.length
+      if (!changed) continue
+
       await prisma.task.update({
         where: { id: existing.id },
         data: {
